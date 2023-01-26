@@ -124,8 +124,17 @@ namespace RPPlus
                      {
                          if (p.isInGame)
                          {
-                             Characters character = p.character;                          
-                             var job = Nova.biz.bizs.Where(u => u.Id == character.BizId).First();
+                             Characters character = p.character;
+                             Bizs job;
+                             try
+                             {
+                                 job = Nova.biz.bizs.Where(u => u.Id == character.BizId).First();
+                             }
+                             catch
+                             {
+                                 return false;
+                             }
+                             
                              if (job != null)
                              {                                 
                                  if (character != null && job.IsActivity(Life.BizSystem.Activity.Type.LawEnforcement))
