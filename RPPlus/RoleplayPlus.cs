@@ -3,10 +3,10 @@ using Life.DB;
 using Life.Network;
 using Life.UI;
 using System.Collections;
+using System.IO;
 using System.Linq;
-using Mirror;
+using Socket.Newtonsoft.Json;
 using UnityEngine;
-using Random = UnityEngine.Random;
 
 namespace RPPlus
 {
@@ -14,6 +14,9 @@ namespace RPPlus
     {
         private LifeServer _server;
         private long _lastRob;
+        private static string _dirPath;
+        public static string ConfPath;
+        private RPPlusConfig _config;
 
         public RoleplayPlus(IGameAPI api) : base(api)
         {
@@ -22,11 +25,14 @@ namespace RPPlus
         public override void OnPluginInit()
         {
             base.OnPluginInit();
+
+            InitDirectory();
+
             _server = Nova.server;
             _server.OnPlayerTryToHackATM += (player) =>
             {
                 _server.GetCountOnlineBiz(1, true);
-                UIPanel uiPanel = new UIPanel("Hack Tool V0.2", UIPanel.PanelType.Input).AddButton(
+                UIPanel uiPanel = new UIPanel("Hack Tool V0.3", UIPanel.PanelType.Input).AddButton(
                         "Commencer le Hack", (ui =>
                         {
                             if (_lastRob > Nova.UnixTimeNow())
@@ -42,9 +48,31 @@ namespace RPPlus
                                 player.ClosePanel(ui);
                             }
                         })).AddButton("Close", (player.ClosePanel))
-                    .SetText("HackTool.exe Error de piratage Lancement de FIX-HackTool.exe");
+                    .SetText("HackTool.exe Error de piratage lancement de FIX-HackTool.exe");
                 player.ShowPanelUI(uiPanel);
             };
+
+            SChatCommand reload = new SChatCommand("/reloadrpplus", "Reload the config of RPPlus", "/reloadrpplus",
+                (player, arg) => { _config = JsonConvert.DeserializeObject<RPPlusConfig>(ConfPath); });
+            reload.Register();
+        }
+
+        private void InitDirectory()
+        {
+            _dirPath = $"{pluginsPath}/RPPlus";
+            ConfPath = $"{_dirPath}/config.json";
+            if (!Directory.Exists(_dirPath))
+                Directory.CreateDirectory(_dirPath);
+            if (!File.Exists(ConfPath))
+            {
+                _config = new RPPlusConfig() { hackCooldown = 28800, minMoney = 500, maxMoney = 1000 };
+                var json = JsonConvert.SerializeObject(_config);
+                File.WriteAllText(ConfPath, json);
+            }
+            else
+            {
+                _config = JsonConvert.DeserializeObject<RPPlusConfig>(ConfPath);
+            }
         }
 
         private IEnumerator GetMoney(Player player, Vector3 position)
@@ -72,14 +100,16 @@ namespace RPPlus
                            name + " </color > ");
             }
 
-            _lastRob = Nova.UnixTimeNow() + 28800L;
+            _lastRob = Nova.UnixTimeNow() + _config.hackCooldown;
             int number = 0;
-            for (int i = 0; i < 60; ++i)
+            for (int i = 0; i < 60; i++)
             {
                 if (Vector3.Distance(player.setup.transform.position, position) < 4.0)
                 {
                     number++;
-                    player.SendText("<color=#e8472a>Braquage en cours, veuillez patienter...< / color > ");
+                    if (i == 0) 
+                        player.SendText("<color=#e8472a>Braquage en cours, veuillez patienter...< / color > ");    
+                    
                     yield return new WaitForSeconds(1f);
                 }
                 else
@@ -90,9 +120,25 @@ namespace RPPlus
                 }
             }
 
-            int money = Random.Range(500, 1000) * number;
+            int money = Random.Range(_config.minMoney, _config.maxMoney) * number;
             player.AddMoney(money, "ATM ROB");
             player.SendText($"<color=#e8472a>Vous avez volé {money}€</color>");
+        }
+    }
+
+    [System.Serializable]
+    public class RPPlusConfig
+    {
+        public long hackCooldown;
+
+        public int minMoney;
+
+        public int maxMoney;
+
+        public void Save()
+        {
+            var json = JsonConvert.SerializeObject(this);
+            File.WriteAllText(RoleplayPlus.ConfPath, json);
         }
     }
 }
