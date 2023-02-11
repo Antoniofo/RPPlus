@@ -76,7 +76,7 @@ namespace RPPlus
                         else
                         {
                             _server.lifeManager.StartCoroutine(GetMoney(player, player.setup.transform.position));
-                            player.SendText("<color=red>HackTool.exe et en cours de lancement</color > ");
+                            player.SendText("<color=red>HackTool.exe est en cours de lancement</color > ");
                             player.ClosePanel(ui);
                         }
                     })).AddButton("Close", (player.ClosePanel))
@@ -96,7 +96,7 @@ namespace RPPlus
             if (!File.Exists(ConfPath))
             {
 
-                _config = new RPPlusConfig() { hackCooldown = 28800L, minMoney = 500, maxMoney = 1000 };
+                _config = new RPPlusConfig() { hackCooldown = 28800L, minMoney = 500, maxMoney = 1000, hackDuration = 60};
                 var json = JsonConvert.SerializeObject(_config);
                 File.WriteAllText(ConfPath, json);
             }
@@ -128,7 +128,7 @@ namespace RPPlus
                              Bizs job;
                              try
                              {
-                                 job = Nova.biz.bizs.Where(u => u.Id == character.BizId).First();
+                                 job = Nova.biz.bizs.First(u => u.Id == character.BizId);
                              }
                              catch
                              {
@@ -158,14 +158,14 @@ namespace RPPlus
 
             _lastRob = Nova.UnixTimeNow() + _config.hackCooldown;
             int number = 0;
-            int i = 0;
-            for (i = 0; i < 60; i++)
+            int i;
+            for (i = 0; i < _config.hackDuration; i++)
             {
                 if (Vector3.Distance(player.setup.transform.position, position) < 4.0)
                 {
                     number++;
                     if (i == 0)
-                        player.SendText("<color=#e8472a>Braquage en cours, veuillez patienter...</color>");
+                        player.SendText("<color=#e8472a>Braquage en cours, il reste "+_config.hackDuration+" secondes</color>");
 
                     yield return new WaitForSeconds(1f);
                 }
@@ -193,6 +193,8 @@ namespace RPPlus
         public int minMoney;
 
         public int maxMoney;
+
+        public int hackDuration;
 
         public void Save()
         {
